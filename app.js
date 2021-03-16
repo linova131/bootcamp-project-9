@@ -9,6 +9,7 @@ const sequelize = new Sequelize({
   dialect: 'sqlite'
 });
 const { Course, User } = require('./models');
+const {authenticateUser} = require('./middleware/auth-user');
 
 // variable to enable global error logging
 const enableGlobalErrorLogging = process.env.ENABLE_GLOBAL_ERROR_LOGGING === 'true';
@@ -32,7 +33,7 @@ function asyncHandler(cb){
       next(error);
     }
   }
-}
+};
 
 
 // setup a friendly greeting for the root route
@@ -43,44 +44,105 @@ app.get('/', (req, res) => {
 });
 
 // GET /api/users, returns currently authenticated user along with 200 HTTP status code
-app.get('/api/users', asyncHandler(async(req, res)=>{
-  const users = await User.findAll();
-  res.json(users);
+app.get('/api/users', authenticateUser, asyncHandler(async(req, res)=>{
+  const user = req.currentUser;
+
+  res.json({
+    firstName: user.firstName,
+    lastName: user.lastName,
+  });
 }));
 
-// POST /api/users, create a new user, set the Location header to "/" and return a 201 status code
+// POST /api/users, create a new user, set the Location header to "/" and return a 201 status code and no content
 app.post('/api/users', asyncHandler(async(req, res)=> {
   try {
-    console.log(req.body);
     await User.create(req.body);
-    res.status(201).json({"message": "User successfully created"});
+    res.status(201).json({ "message": "User created!" });
   } catch (error) {
-    console.log(error);
-  }
-}))
+    console.log('ERROR: ', error.name);
 
-// GET /api/courses, return a list of all courses (and User owner), 200 status code
+    if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
+      const errors = error.errors.map(err => err.message);
+      res.status(400).json({ errors });   
+    } else {
+      throw error;
+    }
+  }
+}));
+
+// GET /api/courses, return a list of all courses (and User owner), 200 status code 
 app.get('/api/courses', asyncHandler(async(req, res)=>{
   const courses = await Course.findAll();
   res.json(courses);
-}))
+}));
 
 //GET /api/courses/:id, return the corresponding course and User owner, 200 status code
-
-//POST /api/courses, creates a new course, sets Location header to URI of new course, and returns 201 status code
-app.post('/api/courses', asyncHandler(async(req, res)=> {
-  try {
-    console.log(req.body);
-    await Course.create(req.body);
-    res.status(201).json({"message": "Course successfully created"});
-  } catch (error) {
-    console.log(error);
+app.get('/api/courses/:id', asyncHandler(async(req, res, next)=>{
+  const course = await Course.findByPk(req.params.id);
+  if (course) {
+    res.json(course);
+  } else {
+    const err = new Error('Course Not Found');
+    err.status = 404;
+    next(err);
   }
-}))
+}));
 
-//PUT /api/courses, updates corresponding course and returns 204 status code
+//POST /api/courses, creates a new course, sets Location header to URI of new course, and returns 201 status code and no content
+app.post('/api/courses', authenticateUser, asyncHandler(async(req, res)=> {
+  try {
+    await Course.create(req.body);
+    res.status(201).json({ "message": "Course created!" });
+  } catch (error) {
+    console.log('ERROR: ', error.name);
 
-//DELETE /api/courses, deletes corresponding course, returns 204 status code
+    if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
+      const errors = error.errors.map(err => err.message);
+      res.status(400).json({ errors });   
+    } else {
+      throw error;
+    }
+  }
+}));
+
+//PUT /api/courses/:id, updates corresponding course and returns 204 status code and no content
+//TODO add validation
+app.put('/api/courses/:id', authenticateUser, asyncHandler(async(req, res)=> {
+  try {
+    const course = await Course.findByPk(req.params.id);
+    if (course) {
+      await course.update(req.body);
+      res.status(204).json();
+    } else {
+      const err = new Error('Course Not Found');
+      err.status = 404;
+      next(err);
+    }
+  } catch (error) {
+    console.log('ERROR: ', error.name);
+
+    if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
+      const errors = error.errors.map(err => err.message);
+      res.status(400).json({ errors });   
+    } else {
+      throw error;
+    }
+  }
+}));
+
+//DELETE /api/courses, deletes corresponding course, returns 204 status code and no content
+app.delete('/api/courses/:id', authenticateUser, asyncHandler(async(req, res, next)=>{
+  const course = await Course.findByPk(req.params.id);
+  if (course) {
+    await course.destroy();
+    res.status(204).json();
+  } else {
+    const err = new Error('Course Not Found');
+    err.status = 404;
+    next(err);
+  }
+}));
+
 
 // send 404 if no other route matched
 app.use((req, res) => {

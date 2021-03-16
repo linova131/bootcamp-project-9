@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "basic-auth": "^2.0.1",
     "nodemon": "^1.18.3",
     "sequelize": "^6.5.1",
     "sequelize-cli": "^6.2.0"
