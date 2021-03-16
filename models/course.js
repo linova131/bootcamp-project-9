@@ -34,7 +34,9 @@ module.exports = (sequelize) => {
       type: Sequelize.STRING,
     },
     //userId which will be created in the model associations
-  }, {sequelize});
+  }, {
+      timestamps: false,
+      sequelize});
 
   //Associates will go here
   Course.associate = (models) => {

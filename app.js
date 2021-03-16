@@ -23,7 +23,7 @@ app.use(express.json());
 // setup morgan which gives us http request logging
 app.use(morgan('dev'));
 
-//asyncHandler is a helper function
+//asyncHandler is a helper function that wraps routes to make the try/catch blocks more readable
 function asyncHandler(cb){
   return async(req, res, next) => {
     try {
@@ -34,7 +34,6 @@ function asyncHandler(cb){
     }
   }
 };
-
 
 // setup a friendly greeting for the root route
 app.get('/', (req, res) => {
@@ -50,6 +49,7 @@ app.get('/api/users', authenticateUser, asyncHandler(async(req, res)=>{
   res.json({
     firstName: user.firstName,
     lastName: user.lastName,
+    emailAddress: user.emailAddress,
   });
 }));
 
@@ -108,11 +108,16 @@ app.post('/api/courses', authenticateUser, asyncHandler(async(req, res)=> {
 //PUT /api/courses/:id, updates corresponding course and returns 204 status code and no content
 //TODO add validation
 app.put('/api/courses/:id', authenticateUser, asyncHandler(async(req, res)=> {
-  try {
+  try { 
     const course = await Course.findByPk(req.params.id);
     if (course) {
-      await course.update(req.body);
-      res.status(204).json();
+      const user = req.currentUser;
+      if (user.id === course.userId) {  
+        await course.update(req.body);
+        res.status(204).json();
+      } else {
+        res.status(403).json();
+      }
     } else {
       const err = new Error('Course Not Found');
       err.status = 404;
@@ -134,8 +139,13 @@ app.put('/api/courses/:id', authenticateUser, asyncHandler(async(req, res)=> {
 app.delete('/api/courses/:id', authenticateUser, asyncHandler(async(req, res, next)=>{
   const course = await Course.findByPk(req.params.id);
   if (course) {
-    await course.destroy();
-    res.status(204).json();
+    const user = req.currentUser;
+      if (user.id === course.userId) {  
+        await course.destroy();
+        res.status(204).json();
+      } else {
+        res.status(403).json();
+      }
   } else {
     const err = new Error('Course Not Found');
     err.status = 404;

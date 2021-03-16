@@ -31,11 +31,12 @@ module.exports = (sequelize) => {
     emailAddress: {
       type: Sequelize.STRING,
       allowNull: false,
+      unique: true,
       validate: {
         notNull: {
           msg: 'Please provide a valid email address.',
         },
-        notEmpty: {
+        isEmail: {
           msg: 'Please provide a valid email address.',
         },
       },

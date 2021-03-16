@@ -4,6 +4,8 @@ const auth = require('basic-auth');
 const {User} = require('../models');
 const bcryptjs = require('bcryptjs');
 
+//authenticateUser is a middleware function that checks the authentication header against the database of users
+
 exports.authenticateUser = async (req, res, next) => {
   let message;
   const credentials = auth(req);
