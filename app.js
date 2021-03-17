@@ -6,7 +6,7 @@ const morgan = require('morgan');
 const {Sequelize} = require('sequelize');
 const sequelize = new Sequelize({
   storage: 'fsjstd-restapi.db',
-  dialect: 'sqlite'
+  dialect: 'sqlite',
 });
 const { Course, User } = require('./models');
 const {authenticateUser} = require('./middleware/auth-user');
@@ -73,6 +73,14 @@ app.post('/api/users', asyncHandler(async(req, res)=> {
 // GET /api/courses, return a list of all courses (and User owner), 200 status code 
 app.get('/api/courses', asyncHandler(async(req, res)=>{
   const courses = await Course.findAll({
+    attributes: [
+      "id",
+      "title",
+      "description",
+      "estimatedTime",
+      "materialsNeeded",
+      "userId"
+    ],
     include: [
       {
         model: User,
@@ -86,7 +94,23 @@ app.get('/api/courses', asyncHandler(async(req, res)=>{
 
 //GET /api/courses/:id, return the corresponding course and User owner, 200 status code
 app.get('/api/courses/:id', asyncHandler(async(req, res, next)=>{
-  const course = await Course.findByPk(req.params.id);
+  const course = await Course.findByPk(req.params.id, {
+    attributes: [
+      "id",
+      "title",
+      "description",
+      "estimatedTime",
+      "materialsNeeded",
+      "userId"
+    ],
+    include: [
+      {
+        model: User,
+        as: 'courseOwner',
+        attributes: ['firstName','lastName','emailAddress'],
+      },
+    ],
+  });
   if (course) {
     res.json(course);
   } else {
@@ -97,7 +121,7 @@ app.get('/api/courses/:id', asyncHandler(async(req, res, next)=>{
 }));
 
 //POST /api/courses, creates a new course, sets Location header to URI of new course, and returns 201 status code and no content
-app.post('/api/courses', asyncHandler(async(req, res)=> {
+app.post('/api/courses', authenticateUser, asyncHandler(async(req, res)=> {
   try {
     await Course.create(req.body);
     res.status(201).json();
