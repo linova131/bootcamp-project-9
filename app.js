@@ -57,7 +57,7 @@ app.get('/api/users', authenticateUser, asyncHandler(async(req, res)=>{
 app.post('/api/users', asyncHandler(async(req, res)=> {
   try {
     await User.create(req.body);
-    res.status(201).json({ "message": "User created!" });
+    res.status(201).location('/').json();
   } catch (error) {
     console.log('ERROR: ', error.name);
 
@@ -72,7 +72,15 @@ app.post('/api/users', asyncHandler(async(req, res)=> {
 
 // GET /api/courses, return a list of all courses (and User owner), 200 status code 
 app.get('/api/courses', asyncHandler(async(req, res)=>{
-  const courses = await Course.findAll();
+  const courses = await Course.findAll({
+    include: [
+      {
+        model: User,
+        as: 'courseOwner',
+        attributes: ['firstName','lastName','emailAddress'],
+      },
+    ],
+  });
   res.json(courses);
 }));
 
@@ -89,14 +97,14 @@ app.get('/api/courses/:id', asyncHandler(async(req, res, next)=>{
 }));
 
 //POST /api/courses, creates a new course, sets Location header to URI of new course, and returns 201 status code and no content
-app.post('/api/courses', authenticateUser, asyncHandler(async(req, res)=> {
+app.post('/api/courses', asyncHandler(async(req, res)=> {
   try {
     await Course.create(req.body);
-    res.status(201).json({ "message": "Course created!" });
+    res.status(201).json();
   } catch (error) {
     console.log('ERROR: ', error.name);
-
     if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
+      console.log('sequelize error handler fired');
       const errors = error.errors.map(err => err.message);
       res.status(400).json({ errors });   
     } else {
@@ -107,7 +115,7 @@ app.post('/api/courses', authenticateUser, asyncHandler(async(req, res)=> {
 
 //PUT /api/courses/:id, updates corresponding course and returns 204 status code and no content
 //TODO add validation
-app.put('/api/courses/:id', authenticateUser, asyncHandler(async(req, res)=> {
+app.put('/api/courses/:id', authenticateUser, asyncHandler(async(req, res, next)=> {
   try { 
     const course = await Course.findByPk(req.params.id);
     if (course) {
