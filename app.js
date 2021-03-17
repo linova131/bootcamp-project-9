@@ -123,8 +123,8 @@ app.get('/api/courses/:id', asyncHandler(async(req, res, next)=>{
 //POST /api/courses, creates a new course, sets Location header to URI of new course, and returns 201 status code and no content
 app.post('/api/courses', authenticateUser, asyncHandler(async(req, res)=> {
   try {
-    await Course.create(req.body);
-    res.status(201).json();
+    const course = await Course.create(req.body);
+    res.status(201).location('/api/courses/' + course.id).json();
   } catch (error) {
     console.log('ERROR: ', error.name);
     if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
